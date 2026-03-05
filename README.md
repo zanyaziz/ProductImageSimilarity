@@ -93,6 +93,49 @@ This directory persists across runs — subsequent runs skip the download entire
 
 ## Usage
 
+This project ships two CLI scripts.
+
+---
+
+### `download.js` — Download images from a listing
+
+Launches a headless browser, renders the listing page (including lazy-loaded images), and saves all product images to a local folder.
+
+```
+Options:
+  -u, --url <url>         Marketplace listing URL (required)
+  -f, --folder <path>     Destination folder — created if it doesn't exist (required)
+  --min-size <pixels>     Minimum image dimension to include (default: 300)
+  -h, --help              Display help
+```
+
+**Example:**
+```bash
+node src/download.js --url "https://www.facebook.com/marketplace/item/123456" --folder ./assets/listing_1
+```
+
+**Sample output:**
+```
+Launching browser...
+Loading: https://www.facebook.com/marketplace/item/123456
+
+Found 8 image(s). Downloading to assets/listing_1/
+
+  ✓ 1.jpg  (1080×1080)
+  ✓ 2.jpg  (1080×1080)
+  ✓ 3.jpg  (960×720)
+  ✗ SKIP   cdn.example.com/icon.png — HTTP 403
+  ✓ 4.jpg  (1080×1080)
+
+4 image(s) saved to assets/listing_1
+```
+
+> **Note:** Some marketplaces (e.g. Facebook Marketplace) require you to be logged in to view listings. If you get 0 images, try lowering `--min-size` or check if the listing requires authentication.
+
+---
+
+### `index.js` — Compare a query image against a folder
+
 ```
 Options:
   -q, --query <path>      Path to the query image (required)
@@ -101,21 +144,33 @@ Options:
   -h, --help              Display help
 ```
 
-### Examples
+**Examples:**
 
-Compare a camera photo against a folder of stock photos:
+Compare a camera photo against downloaded listing images:
 ```bash
-node src/index.js --query ./my-car-photo.jpg --folder ./listing-images/
+node src/index.js --query ./assets/listing_1/Comparison.jpg --folder ./assets/listing_1/
 ```
 
 Use a stricter threshold to reduce false positives:
 ```bash
-node src/index.js --query ./my-car-photo.jpg --folder ./listing-images/ --threshold 0.80
+node src/index.js --query ./assets/listing_1/Comparison.jpg --folder ./assets/listing_1/ --threshold 0.80
 ```
 
 Use a looser threshold for higher recall:
 ```bash
-node src/index.js --query ./my-car-photo.jpg --folder ./listing-images/ --threshold 0.65
+node src/index.js --query ./assets/listing_1/Comparison.jpg --folder ./assets/listing_1/ --threshold 0.65
+```
+
+---
+
+### End-to-end workflow
+
+```bash
+# Step 1: Download all images from a listing
+node src/download.js --url "<listing-url>" --folder ./assets/listing_1
+
+# Step 2: Compare your query image against the downloaded images
+node src/index.js --query ./assets/listing_1/Comparison.jpg --folder ./assets/listing_1/
 ```
 
 ### Sample Output
@@ -168,10 +223,12 @@ This makes the tool scriptable — useful for pipeline integration.
 ```
 ImageSimilarity/
   src/
-    index.js        CLI entry point and output rendering
+    download.js     CLI — scrape and download images from a marketplace listing
+    index.js        CLI — compare a query image against a folder
     embeddings.js   CLIP model loader and embedding extractor
     dhash.js        Difference hash computation and Hamming similarity
     scorer.js       Score combination and match classification
+  assets/           Local image sets (gitignored)
   prompt.md         Problem context, architecture decisions, trade-off analysis
   package.json
   README.md
