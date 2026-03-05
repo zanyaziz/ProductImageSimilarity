@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Assets — images are not tracked
+assets/
+
+# Model cache
+.cache/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
