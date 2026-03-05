@@ -1,7 +1,35 @@
 import puppeteer from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { program } from 'commander';
+
+/**
+ * Find the Chrome executable installed by Puppeteer, preferring arm64 on Apple Silicon.
+ * This lets an x64 Node process still launch the arm64 Chrome (via Rosetta).
+ */
+function findChrome() {
+  const cacheDir = path.join(os.homedir(), '.cache', 'puppeteer', 'chrome');
+  if (!fs.existsSync(cacheDir)) return null;
+
+  const entries = fs.readdirSync(cacheDir);
+
+  for (const prefix of ['mac_arm', 'mac-']) {
+    const dir = entries.find(e => e.startsWith(prefix));
+    if (!dir) continue;
+    const arch = prefix === 'mac_arm' ? 'arm64' : 'x64';
+    const chromePath = path.join(
+      cacheDir, dir,
+      `chrome-mac-${arch}`,
+      'Google Chrome for Testing.app',
+      'Contents', 'MacOS',
+      'Google Chrome for Testing'
+    );
+    if (fs.existsSync(chromePath)) return chromePath;
+  }
+
+  return null;
+}
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -58,8 +86,15 @@ async function main() {
   fs.mkdirSync(folderPath, { recursive: true });
 
   console.log(`\nLaunching browser...`);
+  const chromePath = findChrome();
+  if (!chromePath) {
+    console.error(`${RED}Chrome not found. Run: npx puppeteer browsers install chrome${RESET}`);
+    process.exit(1);
+  }
+
   const browser = await puppeteer.launch({
     headless: 'new',
+    executablePath: chromePath,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
